@@ -21,35 +21,26 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '8.11.1'
 
-      - name: Prepare sources and Build
+      - name: Extract ZIP if present and Build
         run: |
-          # 1. Если в репозитории лежит ZIP-архив, распаковываем его
           ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           if [ -n "$ZIP_FILE" ]; then
-            echo "Найден архив $ZIP_FILE, распаковываем..."
+            echo "Распаковка $ZIP_FILE..."
             unzip -o "$ZIP_FILE"
           fi
 
-          # 2. Ищем файл settings.gradle
           SETTINGS_FILE=$(find . -name "settings.gradle" | head -n 1)
-
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ОШИБКА: Файл settings.gradle не найден ни в репозитории, ни внутри zip!"
-            echo "Содержимое репозитория:"
-            ls -laR
+            echo "Файл settings.gradle не найден!"
             exit 1
           fi
 
-          # 3. Переходим в директорию с проектом и собираем
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-          echo "Проект найден в: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-          
           gradle build --no-daemon
 
-          # 4. Копируем результат для загрузки в артефакты
           mkdir -p "$GITHUB_WORKSPACE/build/libs"
           cp build/libs/*.jar "$GITHUB_WORKSPACE/build/libs/" 2>/dev/null || true
 
