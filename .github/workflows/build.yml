@@ -23,8 +23,23 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build with Gradle
-        run: gradle build
+      - name: Locate project and build
+        run: |
+          # Находим путь к файлу settings.gradle независимо от глубины папок
+          PROJECT_DIR=$(dirname $(find . -name "settings.gradle" | head -n 1))
+          
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Ошибка: settings.gradle не найден в репозитории!"
+            exit 1
+          fi
+          
+          echo "Сборка проекта в директории: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle build
+          
+          # Копируем собранный мод в корневой каталог сборщика для сохранения
+          mkdir -p $GITHUB_WORKSPACE/build/libs
+          cp build/libs/*.jar $GITHUB_WORKSPACE/build/libs/ 2>/dev/null || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
