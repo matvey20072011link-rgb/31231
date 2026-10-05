@@ -23,23 +23,35 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Locate project and build
+      - name: Prepare sources and Build
         run: |
-          # Находим путь к файлу settings.gradle независимо от глубины папок
-          PROJECT_DIR=$(dirname $(find . -name "settings.gradle" | head -n 1))
-          
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Ошибка: settings.gradle не найден в репозитории!"
+          # 1. Если в репозитории лежит ZIP-архив, распаковываем его
+          ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Найден архив $ZIP_FILE, распаковываем..."
+            unzip -o "$ZIP_FILE"
+          fi
+
+          # 2. Ищем файл settings.gradle
+          SETTINGS_FILE=$(find . -name "settings.gradle" | head -n 1)
+
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "ОШИБКА: Файл settings.gradle не найден ни в репозитории, ни внутри zip!"
+            echo "Содержимое репозитория:"
+            ls -laR
             exit 1
           fi
-          
-          echo "Сборка проекта в директории: $PROJECT_DIR"
+
+          # 3. Переходим в директорию с проектом и собираем
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          echo "Проект найден в: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-          gradle build
           
-          # Копируем собранный мод в корневой каталог сборщика для сохранения
-          mkdir -p $GITHUB_WORKSPACE/build/libs
-          cp build/libs/*.jar $GITHUB_WORKSPACE/build/libs/ 2>/dev/null || true
+          gradle build --no-daemon
+
+          # 4. Копируем результат для загрузки в артефакты
+          mkdir -p "$GITHUB_WORKSPACE/build/libs"
+          cp build/libs/*.jar "$GITHUB_WORKSPACE/build/libs/" 2>/dev/null || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
